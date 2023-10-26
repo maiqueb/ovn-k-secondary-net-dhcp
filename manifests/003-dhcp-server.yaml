@@ -1,0 +1,64 @@
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: dhcp-server-conf
+data:
+  dhcpd.conf: |
+    authoritative;
+
+    default-lease-time 86400;
+    max-lease-time 86400;
+
+    subnet 192.168.123.0 netmask 255.255.255.0 {
+            range 192.168.123.2 192.168.123.254;
+            option broadcast-address 192.168.123.255;
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dhcp-server
+  labels:
+    app: dhcp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dhcp
+  template:
+    metadata:
+      labels:
+        app: dhcp
+      annotations:
+        k8s.v1.cni.cncf.io/networks: '[
+          {
+            "name": "flatl2",
+            "ips": ["192.168.123.1/24"]
+          }
+        ]'
+    spec:
+      containers:
+      - name: server
+        image: quay.io/mduarted/dhcpd:latest
+        args: ["-4", "-f", "-d", "--no-pid", "-cf", "/etc/dhcp/dhcpd.conf"]
+        securityContext:
+          runAsUser: 1000
+          privileged: true
+        volumeMounts:
+        - name: multus-daemon-config
+          mountPath: /etc/dhcp
+          readOnly: true
+        - name: dhcpdb
+          mountPath: "/var/lib/dhcp"
+      volumes:
+      - name: multus-daemon-config
+        configMap:
+          name: dhcp-server-conf
+          items:
+          - key: dhcpd.conf
+            path: dhcpd.conf
+      - name: dhcpdb
+        persistentVolumeClaim:
+          claimName: dhcp-db
+
