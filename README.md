@@ -152,7 +152,7 @@ spec:
     spec:
       containers:
       - name: server
-        image: quay.io/mduarted/dhcpd
+        image: ghcr.io/maiqueb/ovn-k-secondary-net-dhcp:main
         args: ["-4", "-f", "-d", "--no-pid", "-cf", "/etc/dhcp/dhcpd.conf"]
         securityContext:
           runAsUser: 1000
